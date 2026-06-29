@@ -1,0 +1,66 @@
+{
+  "expo": {
+    "name": "jira-voice-task-app",
+    "slug": "jira-voice-task-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "jiravoicetaskapp",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "icon": "./assets/images/splashscreen.png",
+      "bundleIdentifier": "com.anonymous.jiravoicetaskapp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "assets/images/android-icon-foreground.png",
+        "backgroundImage": "assets/images/android-icon-background.png",
+        "monochromeImage": "assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.jiravoicetaskapp"
+    },
+    "web": {
+      "output": "static",
+      "favicon": "assets/images/favicon-32x32.png"
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "minSdkVersion": 24,
+            "useAndroidX": true,
+            "enableJetifier": true
+          }
+        }
+      ],
+      "expo-speech-recognition",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splashscreen.png",
+          "backgroundColor": "#FFFFFF",
+          "imageWidth": 200
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2b015ba5-84fa-4934-993b-c0272e4f67c2"
+      }
+    }
+  }
+}
