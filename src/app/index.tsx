@@ -55,7 +55,7 @@ export default function LoginScreen() {
         );
 
         // 5. Navigation to the next screen
-        router.replace("/record");
+        router.replace("src/app/record.tsx");
       } else {
         Alert.alert("Authentication Failed", "Invalid credentials or domain.");
       }
