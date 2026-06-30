@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
   Alert,
+  Image,
 } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -72,9 +73,12 @@ export default function LoginScreen() {
       <SafeAreaView style={styles.container}>
         {/* Header Section */}
         <View style={styles.headerContainer}>
-          {/* Fallback Logo Placeholder to prevent require() crashes */}
           <View style={styles.logoPlaceholder}>
-            <Text style={styles.logoText}>Jira Voice</Text>
+            <Image
+              source={require("../../assets/images/splashscreen.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
           </View>
           <Text style={styles.title}>Connect your Jira Account</Text>
         </View>
@@ -182,5 +186,10 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 16,
   },
 });
