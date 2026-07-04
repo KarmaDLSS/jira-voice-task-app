@@ -4,7 +4,6 @@ import { encode } from "base-64";
 import * as SecureStore from "expo-secure-store";
 import React, { useState } from "react";
 import {
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,14 +12,12 @@ import {
   Alert,
   Image,
 } from "react-native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 export default function LoginScreen() {
   // State variables for the inputs
   const [domain, setDomain] = useState("");
   const [email, setEmail] = useState("");
   const [token, setToken] = useState("");
-
   // The connection and validation logic
   const handleConnect = async () => {
     // 1. Validation
@@ -44,7 +41,6 @@ export default function LoginScreen() {
       });
 
       if (response.ok) {
-        // 4. Persistence in the Secure Vault
         await SecureStore.setItemAsync(
           "jira_session",
           JSON.stringify({
@@ -53,9 +49,7 @@ export default function LoginScreen() {
             token: token.trim(),
           }),
         );
-
-        // 5. Navigation to the next screen
-        router.replace("src/app/record.tsx");
+        router.replace("/(app)/record");
       } else {
         Alert.alert("Authentication Failed", "Invalid credentials or domain.");
       }
@@ -69,61 +63,59 @@ export default function LoginScreen() {
 
   // The UI Rendering
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={styles.container}>
-        {/* Header Section */}
-        <View style={styles.headerContainer}>
-          <View style={styles.logoPlaceholder}>
-            <Image
-              source={require("../../assets/images/splashscreen.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          </View>
-          <Text style={styles.title}>Connect your Jira Account</Text>
-        </View>
-
-        {/* Input Section */}
-        <View style={styles.formContainer}>
-          <Text style={styles.label}>Jira Domain</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="your-domain.atlassian.net"
-            value={domain}
-            onChangeText={setDomain}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="you@example.com"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-
-          <Text style={styles.label}>API Token</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="*******************"
-            value={token}
-            onChangeText={setToken}
-            secureTextEntry={true}
-            autoCapitalize="none"
-            autoCorrect={false}
+    <SafeAreaView style={styles.container}>
+      {/* Header Section */}
+      <View style={styles.headerContainer}>
+        <View style={styles.logoPlaceholder}>
+          <Image
+            source={require("../../assets/images/splashscreen.png")}
+            style={styles.logo}
+            resizeMode="contain"
           />
         </View>
+        <Text style={styles.title}>Connect your Jira Account</Text>
+      </View>
 
-        {/* Action Section */}
-        <TouchableOpacity style={styles.button} onPress={handleConnect}>
-          <Text style={styles.buttonText}>Connect</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    </SafeAreaProvider>
+      {/* Input Section */}
+      <View style={styles.formContainer}>
+        <Text style={styles.label}>Jira Domain</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="your-domain.atlassian.net"
+          value={domain}
+          onChangeText={setDomain}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+
+        <Text style={styles.label}>Email</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="you@example.com"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+
+        <Text style={styles.label}>API Token</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="*******************"
+          value={token}
+          onChangeText={setToken}
+          secureTextEntry={true}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+      </View>
+
+      {/* Action Section */}
+      <TouchableOpacity style={styles.button} onPress={handleConnect}>
+        <Text style={styles.buttonText}>Connect</Text>
+      </TouchableOpacity>
+    </SafeAreaView>
   );
 }
 
