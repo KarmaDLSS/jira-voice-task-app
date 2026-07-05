@@ -1,157 +1,139 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
+// The new modular imports
 import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  ActivityIndicator,
-} from "react-native";
-import { router } from "expo-router";
-import * as SecureStore from "expo-secure-store";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-export default function RecordScreen() {
-  const [session, setSession] = useState<{
-    domain: string;
-    email: string;
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
+  useAudioRecorder,
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+} from "expo-audio";
 
-  // Load the saved credentials from SecureStore
+export default function RecordScreen() {
+  // 1. Hook-based recorder instantiation
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioUri, setAudioUri] = useState<string | null>(null);
+
+  // 2. Global Audio Mode Configuration
   useEffect(() => {
-    const loadSession = async () => {
-      try {
-        const storedSession = await SecureStore.getItemAsync("jira_session");
-        if (storedSession) {
-          setSession(JSON.parse(storedSession));
-        } else {
-          // If no session exists, boot them back to the login screen
-          router.replace("/record");
-        }
-      } catch (error) {
-        console.error("Session load error:", error);
-        router.replace("/");
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadSession();
+    (async () => {
+      // This ensures iOS doesn't record dead air if the hardware switch is on silent
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+      });
+    })();
   }, []);
 
-  const handleLogout = async () => {
+  async function startRecording() {
     try {
-      await SecureStore.deleteItemAsync("jira_session");
-      router.replace("/");
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
-  };
+      // 3. Strict Permission Check via AudioModule
+      const status = await AudioModule.requestRecordingPermissionsAsync();
+      if (!status.granted) {
+        Alert.alert(
+          "Permission Denied",
+          "You must allow microphone access to record tasks.",
+        );
+        return;
+      }
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.center}>
-        <ActivityIndicator size="large" color="#0052CC" />
-      </SafeAreaView>
-    );
+      // 4. Prepare the buffer and start
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
+
+      setIsRecording(true);
+      setAudioUri(null); // Clear previous runs
+    } catch (err) {
+      console.error("Failed to start recording", err);
+      Alert.alert("Error", "Failed to start the microphone.");
+    }
+  }
+
+  async function stopRecording() {
+    if (!isRecording) return;
+
+    try {
+      // 5. Stop and extract the file path
+      await audioRecorder.stop();
+      setIsRecording(false);
+
+      // In the new API, the URI is directly accessible on the recorder object
+      const uri = audioRecorder.uri;
+      setAudioUri(uri);
+
+      console.log("Recording stopped and stored at", uri);
+
+      // -> HERE IS WHERE THE TRANSCRIPTION PIPELINE BEGINS
+    } catch (err) {
+      console.error("Failed to stop recording", err);
+    }
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Jira Voice</Text>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      <Text style={styles.title}>Task Input</Text>
 
-      <View style={styles.content}>
-        <Text style={styles.welcomeText}>Authentication Successful.</Text>
-        {session && (
-          <Text style={styles.subText}>
-            Connected as: {session.email}
-            {"\n"}
-            Workspace: {session.domain}
-          </Text>
-        )}
+      <TouchableOpacity
+        style={[
+          styles.recordButton,
+          isRecording ? styles.recordingActive : null,
+        ]}
+        onPress={isRecording ? stopRecording : startRecording}
+      >
+        <Text style={styles.buttonText}>
+          {isRecording ? "Stop Recording" : "Start Recording"}
+        </Text>
+      </TouchableOpacity>
 
-        {/* Recording UI Placeholder */}
-        <View style={styles.recordPlaceholder}>
-          <Text style={styles.placeholderText}>
-            Voice Recording UI goes here
-          </Text>
-        </View>
-      </View>
-    </SafeAreaView>
+      {audioUri && (
+        <Text style={styles.uriText}>
+          File saved at: {audioUri.split("/").pop()}
+        </Text>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#F8F9FA",
-  },
   container: {
     flex: 1,
-    backgroundColor: "#F8F9FA",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 20,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#DFE1E6",
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#172B4D",
-  },
-  logoutBtn: {
-    padding: 8,
-  },
-  logoutText: {
-    color: "#DE350B",
-    fontWeight: "600",
-  },
-  content: {
-    flex: 1,
-    padding: 24,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#F8F9FA",
+    padding: 24,
   },
-  welcomeText: {
+  title: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#00875A", // Jira Success Green
-    marginBottom: 12,
-    textAlign: "center",
-  },
-  subText: {
-    fontSize: 14,
-    color: "#5E6C84",
-    textAlign: "center",
     marginBottom: 40,
-    lineHeight: 20,
+    color: "#172B4D",
   },
-  recordPlaceholder: {
+  recordButton: {
+    backgroundColor: "#0052CC",
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: "#0052CC",
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5, // For Android shadow
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 8,
   },
-  placeholderText: {
-    color: "#FFFFFF",
-    textAlign: "center",
+  recordingActive: {
+    backgroundColor: "#FF5630",
+  },
+  buttonText: {
+    color: "white",
+    fontSize: 18,
     fontWeight: "bold",
+  },
+  uriText: {
+    marginTop: 30,
+    fontSize: 12,
+    color: "#6B778C",
+    textAlign: "center",
   },
 });
