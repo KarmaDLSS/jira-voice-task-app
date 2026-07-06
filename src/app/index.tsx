@@ -1,4 +1,6 @@
 import { router } from "expo-router";
+import { Redirect } from "expo-router";
+import { useAuth } from "../ctx/authcontext";
 // @ts-ignore
 import { encode } from "base-64";
 import * as SecureStore from "expo-secure-store";
@@ -18,6 +20,10 @@ export default function LoginScreen() {
   const [domain, setDomain] = useState("");
   const [email, setEmail] = useState("");
   const [token, setToken] = useState("");
+  const { session, signIn } = useAuth();
+  if (session) {
+    return <Redirect href="/(app)/record" />;
+  }
   // The connection and validation logic
   const handleConnect = async () => {
     // 1. Validation
@@ -49,7 +55,11 @@ export default function LoginScreen() {
             token: token.trim(),
           }),
         );
-        router.replace("/(app)/record");
+        await signIn({
+          domain: cleanDomain,
+          email: email.trim(),
+          apiToken: token.trim(),
+        });
       } else {
         Alert.alert("Authentication Failed", "Invalid credentials or domain.");
       }
