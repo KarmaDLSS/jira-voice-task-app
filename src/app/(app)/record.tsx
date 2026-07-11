@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
+  Image,
   View,
   Text,
   TextInput,
@@ -273,9 +274,12 @@ export default function RecordScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.logoPlaceholder}>
-            <FontAwesome5 name="microphone-alt" size={24} color="#0052CC" />
-            <Text style={styles.logoText}>JiraVoice</Text>
+          <View style={styles.logo}>
+            <Image
+              source={require("../../../assets/images/splashscreen.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
           </View>
           <Text style={styles.headerTitle}>Create Task</Text>
         </View>
@@ -392,6 +396,11 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 12,
     marginLeft: 4,
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 16,
   },
   headerTitle: { fontSize: 20, fontWeight: "bold", color: "#0052CC" },
   inputGroup: { marginBottom: 20 },
