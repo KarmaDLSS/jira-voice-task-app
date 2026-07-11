@@ -386,17 +386,6 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     marginTop: 16,
   },
-  logoPlaceholder: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginRight: 16,
-  },
-  logoText: {
-    color: "#0052CC",
-    fontWeight: "bold",
-    fontSize: 12,
-    marginLeft: 4,
-  },
   logo: {
     width: 120,
     height: 120,
