@@ -7,12 +7,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   Alert,
   ActivityIndicator,
   Modal,
   FlatList,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
   useAudioRecorder,
   AudioModule,
