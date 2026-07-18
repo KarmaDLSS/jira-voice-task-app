@@ -21,22 +21,10 @@ import {
 } from "expo-audio";
 import { FontAwesome5 } from "@expo/vector-icons";
 import { useAuth } from "../../ctx/authcontext"; // Adjust path if needed
+import { JiraProject } from "@/interfaces/MyProjects";
+// @ts-ignore
+import { encode } from "base-64";
 
-const encodeBasicAuth = (email: string, token: string) => {
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-  const str = `${email}:${token}`;
-  let output = "";
-  for (
-    let block = 0, charCode, i = 0, map = chars;
-    str.charAt(i | 0) || ((map = "="), i % 1);
-    output += map.charAt(63 & (block >> (8 - (i % 1) * 8)))
-  ) {
-    charCode = str.charCodeAt((i += 3 / 4));
-    block = (block << 8) | charCode;
-  }
-  return output;
-};
 
 // Pure JS Custom Dropdown Component to avoid Native crashes
 const CustomSelector = ({
@@ -103,7 +91,7 @@ export default function RecordScreen() {
   const { session } = useAuth();
 
   // Dynamic Jira Data State
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<JiraProject[]>([]);
   const [issueTypes, setIssueTypes] = useState<any[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
@@ -126,7 +114,8 @@ export default function RecordScreen() {
       if (!session) return;
       setIsLoadingData(true);
 
-      const authHeader = `Basic ${encodeBasicAuth(session.email, session.apiToken)}`;
+      const authHeader = `Basic ${encode(`${session.email}:${session.apiToken}`)}`;
+
       const headers = { Authorization: authHeader, Accept: "application/json" };
 
       try {
@@ -136,7 +125,15 @@ export default function RecordScreen() {
           { headers },
         );
         const projData = await projRes.json();
-        if (projRes.ok) setProjects(projData);
+        if (projRes.ok) {
+          setProjects(projData);
+        } else {
+          console.error("Failed to fetch Jira projects:", projRes.status, projData);
+          Alert.alert(
+            "Data Error",
+            `Could not load projects from Jira: ${projData.errorMessages?.[0] || projData.message || "Status " + projRes.status}`
+          );
+        }
 
         // Fetch Issue Types
         const typeRes = await fetch(
@@ -145,7 +142,15 @@ export default function RecordScreen() {
         );
         const typeData = await typeRes.json();
         // Filter out sub-tasks to keep it simple for now
-        if (typeRes.ok) setIssueTypes(typeData.filter((t: any) => !t.subtask));
+        if (typeRes.ok) {
+          setIssueTypes(typeData.filter((t: any) => !t.subtask));
+        } else {
+          console.error("Failed to fetch Jira issue types:", typeRes.status, typeData);
+          Alert.alert(
+            "Data Error",
+            `Could not load issue types from Jira: ${typeData.errorMessages?.[0] || typeData.message || "Status " + typeRes.status}`
+          );
+        }
       } catch (error) {
         console.error("Failed to fetch Jira schema:", error);
         Alert.alert("Data Error", "Could not load projects from Jira.");
@@ -235,7 +240,7 @@ export default function RecordScreen() {
         },
       };
 
-      const authHeader = `Basic ${encodeBasicAuth(session.email, session.apiToken)}`;
+      const authHeader = `Basic ${encode(`${session.email}:${session.apiToken}`)}`;
       const response = await fetch(
         `https://${session.domain}/rest/api/3/issue`,
         {

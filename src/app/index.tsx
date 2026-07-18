@@ -52,7 +52,7 @@ export default function LoginScreen() {
           JSON.stringify({
             domain: cleanDomain,
             email: email.trim(),
-            token: token.trim(),
+            apiToken: token.trim(),
           }),
         );
         await signIn({

@@ -45,7 +45,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const storedSession = await SecureStore.getItemAsync("jira_session");
         if (storedSession) {
-          setSession(JSON.parse(storedSession));
+          const parsed = JSON.parse(storedSession);
+          setSession({
+            domain: parsed.domain,
+            email: parsed.email,
+            apiToken: parsed.apiToken || parsed.token || "",
+          });
         }
       } catch (error) {
         console.error("Failed to load Jira session", error);
