@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  Image,
   View,
   Text,
   TextInput,
@@ -12,6 +11,7 @@ import {
   Modal,
   FlatList,
 } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   useAudioRecorder,
@@ -34,8 +34,33 @@ const CustomSelector = ({
   onSelect,
   placeholder,
   isLoading,
+  authHeader,
 }: any) => {
   const [modalVisible, setModalVisible] = useState(false);
+
+  const getIconUrl = (item: any) => {
+    if (!item) return null;
+    if (item.avatarUrls?.["24x24"]) return item.avatarUrls["24x24"];
+    if (item.avatarUrls?.["32x32"]) return item.avatarUrls["32x32"];
+    if (item.avatarUrls?.["48x48"]) return item.avatarUrls["48x48"];
+    if (item.iconUrl) return item.iconUrl;
+    return null;
+  };
+
+  const renderIcon = (item: any, style: any) => {
+    const iconUrl = getIconUrl(item);
+    if (!iconUrl) return null;
+    return (
+      <Image
+        source={{
+          uri: iconUrl,
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+        }}
+        style={style}
+        contentFit="cover"
+      />
+    );
+  };
 
   return (
     <View style={styles.inputGroup}>
@@ -45,9 +70,12 @@ const CustomSelector = ({
         onPress={() => setModalVisible(true)}
         disabled={isLoading}
       >
-        <Text style={selectedValue ? styles.inputTextDark : styles.inputText}>
-          {isLoading ? "Loading..." : selectedValue?.name || placeholder}
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          {!isLoading && selectedValue && renderIcon(selectedValue, { width: 20, height: 20, marginRight: 8, borderRadius: 4 })}
+          <Text style={selectedValue ? styles.inputTextDark : styles.inputText}>
+            {isLoading ? "Loading..." : selectedValue?.name || placeholder}
+          </Text>
+        </View>
         {isLoading ? (
           <ActivityIndicator size="small" color="#6B778C" />
         ) : (
@@ -70,7 +98,10 @@ const CustomSelector = ({
                     setModalVisible(false);
                   }}
                 >
-                  <Text style={styles.modalItemText}>{item.name}</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    {renderIcon(item, { width: 24, height: 24, marginRight: 12, borderRadius: 4 })}
+                    <Text style={styles.modalItemText}>{item.name}</Text>
+                  </View>
                 </TouchableOpacity>
               )}
             />
@@ -89,6 +120,8 @@ const CustomSelector = ({
 
 export default function RecordScreen() {
   const { session } = useAuth();
+
+  const authHeader = session ? `Basic ${encode(`${session.email}:${session.apiToken}`)}` : undefined;
 
   // Dynamic Jira Data State
   const [projects, setProjects] = useState<JiraProject[]>([]);
@@ -114,9 +147,7 @@ export default function RecordScreen() {
       if (!session) return;
       setIsLoadingData(true);
 
-      const authHeader = `Basic ${encode(`${session.email}:${session.apiToken}`)}`;
-
-      const headers = { Authorization: authHeader, Accept: "application/json" };
+      const headers = { Authorization: authHeader!, Accept: "application/json" };
 
       try {
         // Fetch Projects
@@ -240,13 +271,12 @@ export default function RecordScreen() {
         },
       };
 
-      const authHeader = `Basic ${encode(`${session.email}:${session.apiToken}`)}`;
       const response = await fetch(
         `https://${session.domain}/rest/api/3/issue`,
         {
           method: "POST",
           headers: {
-            Authorization: authHeader,
+            Authorization: authHeader!,
             Accept: "application/json",
             "Content-Type": "application/json",
           },
@@ -259,8 +289,8 @@ export default function RecordScreen() {
       if (!response.ok) {
         throw new Error(
           data.errors?.project ||
-            data.errorMessages?.[0] ||
-            "Failed to create task",
+          data.errorMessages?.[0] ||
+          "Failed to create task",
         );
       }
 
@@ -283,35 +313,37 @@ export default function RecordScreen() {
             <Image
               source={require("../../../assets/images/splashscreen.png")}
               style={styles.logo}
-              resizeMode="contain"
+              contentFit="contain"
             />
           </View>
-          <Text style={styles.headerTitle}>Create Task</Text>
+          <Text style={styles.headerTitle}>Create Task:</Text>
         </View>
 
         {/* Dynamic Project Dropdown */}
         <CustomSelector
-          label="project*"
+          label="Project:"
           items={projects}
           selectedValue={selectedProject}
           onSelect={setSelectedProject}
           placeholder="Select a project"
           isLoading={isLoadingData}
+          authHeader={authHeader}
         />
 
         {/* Dynamic Issue Type Dropdown */}
         <CustomSelector
-          label="issue type*"
+          label="Issue Type:"
           items={issueTypes}
           selectedValue={selectedIssueType}
           onSelect={setSelectedIssueType}
           placeholder="Select issue type"
           isLoading={isLoadingData}
+          authHeader={authHeader}
         />
 
         {/* Summary */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>summary title*</Text>
+          <Text style={styles.label}>Summary Title:</Text>
           <TextInput
             style={styles.input}
             placeholder="login issue on checkout"
@@ -323,7 +355,7 @@ export default function RecordScreen() {
 
         {/* Description */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>description*</Text>
+          <Text style={styles.label}>Description:</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             placeholder="users are unable to login..."
@@ -356,7 +388,7 @@ export default function RecordScreen() {
 
         {/* Priority (Static for now as priority API is complex and often project-specific) */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>priority*</Text>
+          <Text style={styles.label}>Priority:</Text>
           <View style={styles.dropdownSim}>
             <Text style={styles.inputTextDark}>{priority}</Text>
           </View>
