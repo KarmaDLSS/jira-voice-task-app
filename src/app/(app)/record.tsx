@@ -19,6 +19,7 @@ import {
   RecordingPresets,
   setAudioModeAsync,
 } from "expo-audio";
+import * as FileSystem from 'expo-file-system';
 import { FontAwesome5 } from "@expo/vector-icons";
 import { useAuth } from "../../ctx/authcontext"; // Adjust path if needed
 import { JiraProject } from "@/interfaces/MyProjects";
@@ -140,6 +141,7 @@ export default function RecordScreen() {
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [isRecording, setIsRecording] = useState(false);
   const [audioUri, setAudioUri] = useState<string | null>(null);
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
 
   // 1. Fetch Dynamic Data from Jira on Mount
   useEffect(() => {
@@ -174,7 +176,12 @@ export default function RecordScreen() {
         const typeData = await typeRes.json();
         // Filter out sub-tasks to keep it simple for now
         if (typeRes.ok) {
-          setIssueTypes(typeData.filter((t: any) => !t.subtask));
+          const filtered = typeData.filter((t: any) => !t.subtask);
+          // Deduplicate by name to prevent showing multiples of "Story", "Task", etc.
+          const uniqueTypes = filtered.filter((t: any, index: number, self: any[]) =>
+            index === self.findIndex((type) => type.name === t.name)
+          );
+          setIssueTypes(uniqueTypes);
         } else {
           console.error("Failed to fetch Jira issue types:", typeRes.status, typeData);
           Alert.alert(
@@ -230,10 +237,127 @@ export default function RecordScreen() {
     try {
       await audioRecorder.stop();
       setIsRecording(false);
-      setAudioUri(audioRecorder.uri);
-      console.log("Audio saved at:", audioRecorder.uri);
+      const uri = audioRecorder.uri;
+      setAudioUri(uri);
+      console.log("Audio saved at:", uri);
+      if (uri) {
+        processVoiceCommand(uri);
+      }
     } catch (err) {
       console.error("Failed to stop recording", err);
+    }
+  }
+
+  async function processVoiceCommand(uri: string) {
+    const apiKey = process.env.EXPO_PUBLIC_GROQ_API_KEY;
+    if (!apiKey) {
+      Alert.alert("Missing API Key", "EXPO_PUBLIC_GROQ_API_KEY is not set.");
+      return;
+    }
+
+    setIsProcessingVoice(true);
+    try {
+      const file = new FileSystem.File(uri);
+      const whisperRes = await file.upload(
+        "https://api.groq.com/openai/v1/audio/transcriptions",
+        {
+          fieldName: "file",
+          mimeType: "audio/m4a",
+          httpMethod: "POST",
+          uploadType: FileSystem.UploadType.MULTIPART,
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+          },
+          parameters: {
+            model: "whisper-large-v3-turbo",
+            language: "en",
+            temperature: "0",
+          },
+        }
+      );
+
+      if (whisperRes.status !== 200) {
+        let errMessage = "Whisper API failed";
+        try {
+          const errData = JSON.parse(whisperRes.body);
+          errMessage = errData.error?.message || errMessage;
+        } catch (e) { }
+        throw new Error(errMessage);
+      }
+
+      const whisperData = JSON.parse(whisperRes.body);
+      const transcript = whisperData.text;
+      console.log("Transcript:", transcript);
+
+      if (!transcript) {
+        throw new Error("No transcription received.");
+      }
+
+      const projectNames = projects.map((p) => p.name).join(", ");
+      const issueTypeNames = issueTypes.map((t) => t.name).join(", ");
+
+      const prompt = `
+      You are a Jira assistant. Extract the following information from the transcript to create a Jira issue.
+      
+      Available Projects: [${projectNames}]
+      Available Issue Types: [${issueTypeNames}]
+      
+      Transcript: "${transcript}"
+      
+      Return a JSON object with EXACTLY these keys:
+      - projectName: Best match from Available Projects (null if none match)
+      - issueTypeName: Best match from Available Issue Types (null if none match)
+      - title: A concise summary/title for the issue
+      - description: The full detailed description
+      
+      Output ONLY valid JSON, no markdown formatting.
+      `;
+
+      const chatRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-8b-instant",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.1,
+          response_format: { type: "json_object" }
+        }),
+      });
+
+      if (!chatRes.ok) {
+        const errData = await chatRes.json();
+        throw new Error(errData.error?.message || "Chat API failed");
+      }
+
+      const chatData = await chatRes.json();
+      const resultJson = JSON.parse(chatData.choices[0].message.content);
+      console.log("Parsed result:", resultJson);
+
+      if (resultJson.projectName) {
+        const matchedProject = projects.find(
+          (p) => p.name.toLowerCase() === resultJson.projectName.toLowerCase()
+        );
+        if (matchedProject) setSelectedProject(matchedProject);
+      }
+
+      if (resultJson.issueTypeName) {
+        const matchedType = issueTypes.find(
+          (t) => t.name.toLowerCase() === resultJson.issueTypeName.toLowerCase()
+        );
+        if (matchedType) setSelectedIssueType(matchedType);
+      }
+
+      if (resultJson.title) setSummary(resultJson.title);
+      if (resultJson.description) setDescription(resultJson.description);
+
+    } catch (error: any) {
+      console.error("Voice processing error:", error);
+      Alert.alert("Voice Processing Failed", error.message);
+    } finally {
+      setIsProcessingVoice(false);
     }
   }
 
@@ -370,20 +494,33 @@ export default function RecordScreen() {
 
         {/* Voice to Text Button */}
         <TouchableOpacity
-          style={[styles.voiceButton, isRecording && styles.voiceButtonActive]}
+          style={[
+            styles.voiceButton,
+            isRecording && styles.voiceButtonActive,
+            isProcessingVoice && { opacity: 0.7 }
+          ]}
           onPress={handleRecordPress}
+          disabled={isProcessingVoice}
         >
           <Text style={styles.voiceButtonText}>
             Voice To Text{" "}
             <Text style={styles.voiceButtonSubtext}>
-              {isRecording ? "recording..." : "tap mic to record"}
+              {isProcessingVoice
+                ? "processing..."
+                : isRecording
+                  ? "recording..."
+                  : "tap mic to record"}
             </Text>
           </Text>
-          <FontAwesome5
-            name="microphone"
-            size={24}
-            color={isRecording ? "#FF5630" : "#0052CC"}
-          />
+          {isProcessingVoice ? (
+            <ActivityIndicator size="small" color="#0052CC" />
+          ) : (
+            <FontAwesome5
+              name="microphone"
+              size={24}
+              color={isRecording ? "#FF5630" : "#0052CC"}
+            />
+          )}
         </TouchableOpacity>
 
         {/* Priority (Static for now as priority API is complex and often project-specific) */}
