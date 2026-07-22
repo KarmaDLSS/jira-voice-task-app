@@ -120,7 +120,7 @@ const CustomSelector = ({
 };
 
 export default function RecordScreen() {
-  const { session } = useAuth();
+  const { session, signOut } = useAuth();
 
   const authHeader = session ? `Basic ${encode(`${session.email}:${session.apiToken}`)}` : undefined;
 
@@ -433,14 +433,19 @@ export default function RecordScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.logo}>
-            <Image
-              source={require("../../../assets/images/splashscreen.png")}
-              style={styles.logo}
-              contentFit="contain"
-            />
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <View style={styles.logo}>
+              <Image
+                source={require("../../../assets/images/splashscreen.png")}
+                style={styles.logo}
+                contentFit="contain"
+              />
+            </View>
+            <Text style={styles.headerTitle}>Create Task:</Text>
           </View>
-          <Text style={styles.headerTitle}>Create Task:</Text>
+          <TouchableOpacity onPress={signOut} style={{ padding: 8 }}>
+            <FontAwesome5 name="sign-out-alt" size={24} color="#0052CC" />
+          </TouchableOpacity>
         </View>
 
         {/* Dynamic Project Dropdown */}
@@ -557,6 +562,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 32,
     marginTop: 16,
   },
