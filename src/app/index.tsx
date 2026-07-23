@@ -14,7 +14,7 @@ import {
   Alert,
   Image,
 } from "react-native";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 export default function LoginScreen() {
   // State variables for the inputs
   const [domain, setDomain] = useState("");
